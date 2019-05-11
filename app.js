@@ -6,96 +6,60 @@ import DeckGL, {LineLayer, TripsLayer} from 'deck.gl';
 import GL from '@luma.gl/constants';
 import DataProvider from './DataProvider';
 import * as dsv from 'd3-dsv';
+import * as d3 from 'd3';
 
 // Set your mapbox token here
 const MAPBOX_TOKEN = 'pk.eyJ1IjoiaG9uZ3l1amlhbmciLCJhIjoiY2o1Y2VldHpuMDlyNTJxbzh5dmx2enVzNCJ9.y40wPiYB9y6qJE6H4PrzDw'; // eslint-disable-line
 
 //初始化视点
 export const INITIAL_VIEW_STATE = {
-  latitude: 40.884127,
-  longitude: -74.021807,
-  zoom: 14.5,
+  latitude: 31.4673768,
+  longitude: 104.5826264,
+  zoom: 12.5,
   maxZoom: 25,
   pitch: 50,
   bearing: 0
 };
 
-var road_locations_dict = {}
+var accent = d3.scaleOrdinal(d3.schemePaired);
 
 // 解析数据
 function path_handle(data){
 
-  data = dsv.csvParse(data);
-
-  let new_data = []
-
-  data.forEach(function(d){
-
-    d.startX = parseFloat(d.startX)
-    d.endX = parseFloat(d.endX)
-    d.startY = parseFloat(d.startY)
-    d.endY = parseFloat(d.endY)
-
-    let startPoints = [d.startX, d.startY, 10]
-
-    let endPoints = [d.endX, d.endY, 10]
-
-    let name = d.link_id + ': ' + d.street_length
-
-    if(d.startY < 40.876760 && d.startY > 40.702641 && d.startX < -73.905251 && d.startX > -74.022418){
-
-      let meta = {'start':startPoints,'end':endPoints,'name':name}
-
-      new_data.push(meta)
-    }
-
-    road_locations_dict[d.link_id] = startPoints
-  })
-
-  return new_data
-}
-
-function path_segments_constructor(data){
-
   let trips_data = []
 
-  let taxis_segments_bukets = {}
+  let bus_segments_bukets = {}
 
   data = dsv.csvParse(data);
 
-  console.log(data)
-
   data.forEach(function(d){
 
-    let coor =  road_locations_dict[parseInt(d.road_id)]
-    let coor2 = [coor[0], coor[1], parseInt(d.round) * 100]
-    //console.log(parseInt(d.round) )
-    //let occupation = d.occipation
+    d.LONGITUDE = parseFloat(d.LONGITUDE)
+    d.LATITUDE = parseFloat(d.LATITUDE)
+    //console.log('2018-02-26 ' + d.ACTDATETIME.split(' ')[2].replace("'",''))
+    d.ACTDATETIME = new Date('2018-02-26 ' + d.ACTDATETIME.split(' ')[1].replace("'",''))
 
-    if(taxis_segments_bukets[d.taxis_id] == undefined){
+    let timestamp = (d.ACTDATETIME.getHours()) * 3600 + d.ACTDATETIME.getMinutes() * 60 + d.ACTDATETIME.getSeconds()
 
-      taxis_segments_bukets[d.taxis_id] = []
-      taxis_segments_bukets[d.taxis_id].push(coor2)
+    //console.log(timestamp)
+
+    if(bus_segments_bukets[d.PRODUCTID] != undefined){
+
+      bus_segments_bukets[d.PRODUCTID]['path'].push([d.LONGITUDE,d.LATITUDE,timestamp])
     }
     else{
-
-      taxis_segments_bukets[d.taxis_id].push(coor2)
+      bus_segments_bukets[d.PRODUCTID] = {}
+      bus_segments_bukets[d.PRODUCTID]['path'] = []
+      bus_segments_bukets[d.PRODUCTID]['line'] = d.ROUTEID
+      bus_segments_bukets[d.PRODUCTID]['path'].push([d.LONGITUDE,d.LATITUDE,timestamp])
     }
   })
 
-  for (let taxi in taxis_segments_bukets){
+  for (let bus in bus_segments_bukets){
 
-    let sorted_data = taxis_segments_bukets[taxi].sort(function(a,b){
+    let path = bus_segments_bukets[bus]['path']
 
-      if (a[2] === b[2]) {
-        return 0;
-      }
-      else {
-          return (a[2] < b[2]) ? -1 : 1;
-      }
-    })
-
-    let meta = {'segments':sorted_data}
+    let meta = {'line':bus_segments_bukets[bus]['line'], 'segments':path}
 
     trips_data.push(meta)
   }
@@ -121,23 +85,15 @@ export class App extends Component {
     let that = this
 
     //读取管道数据
-    DataProvider.getLinks().then(response => {
+    DataProvider.getBusPath().then(response => {
       
         let data = path_handle(response.data)
 
-        that.setState({linksData: data})
-
-        DataProvider.getTaxisPath().then(response => {
-      
-          let data = path_segments_constructor(response.data)
-  
-          that.setState({tripsData: data})
-  
-          }, error => {
-        
-      });
+        that.setState({tripsData: data})
 
         }, error => {
+
+          console.log(error)
       
     }); 
   }
@@ -156,11 +112,14 @@ export class App extends Component {
 
     //console.log(this.state.time)
     const {
-      loopLength = 1000 * 100, // unit corresponds to the timestamp in source data
-      animationSpeed = 100 // unit time per second
+      loopLength = 3600 * 15, // unit corresponds to the timestamp in source data
+      animationSpeed = 50 // unit time per second
     } = this.props;
+
     const timestamp = Date.now() / 1000;
     const loopTime = loopLength / animationSpeed;
+
+    //console.log(((timestamp % loopTime) / loopTime) * loopLength)
 
     this.setState({
       time: ((timestamp % loopTime) / loopTime) * loopLength
@@ -195,35 +154,32 @@ export class App extends Component {
 
     const roads = this.state.linksData
     const trips = this.state.tripsData
-    const trailLength = 180
+    const trailLength = 50
 
     return [
       new TripsLayer({
         id: 'trips',
         data: trips,
         getPath: d => d.segments,
-        getColor: [255, 81, 63],
+        getColor: d => {
+
+          let color = d3.rgb(accent(d.line))
+          let r = color.r
+          let g = color.g
+          let b = color.b
+
+          console.log([r,g,b])
+
+          return [r,g,b]
+        },
         opacity: 1,
-        widthMinPixels: 5,
+        widthMinPixels: 3,
         rounded: true,
         trailLength,
         currentTime: this.state.time,
         //pickable: true,
        // onHover: this._onHover
       }),
-      //绘制管线
-      new LineLayer({
-        id: 'road-paths',
-        data: roads,
-        fp64: false,
-        opacity: 0.1,
-        getSourcePosition: d => d.start,
-        getTargetPosition: d => d.end,
-        getColor: [157, 211, 217],
-        getWidth,
-        pickable: true,
-        onHover: this._onHover
-      })
     ];
   }
 
