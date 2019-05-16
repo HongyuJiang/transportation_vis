@@ -10,6 +10,8 @@ import * as d3 from 'd3';
 
 // Set your mapbox token here
 const MAPBOX_TOKEN = 'pk.eyJ1IjoiaG9uZ3l1amlhbmciLCJhIjoiY2o1Y2VldHpuMDlyNTJxbzh5dmx2enVzNCJ9.y40wPiYB9y6qJE6H4PrzDw'; // eslint-disable-line
+const PASSENGERES_URL =
+  'https://raw.githubusercontent.com/uber-common/deck.gl-data/master/examples/3d-heatmap/heatmap-data.csv'; // eslint-disable-line
 
 //初始化视点
 export const INITIAL_VIEW_STATE = {
