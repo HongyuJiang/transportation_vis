@@ -14,7 +14,11 @@ export default class DataProvider {
 
     static getBusPath(){
 
-        return axios.get('https://raw.githubusercontent.com/HongyuJiang/transportation_vis/master/data/226-3-15-1114.csv')
+        return axios.get('https://raw.githubusercontent.com/HongyuJiang/transportation_vis/master/data/226-1114.csv')
+    }
+    static getPassengeres(){
+
+        return axios.get('https://raw.githubusercontent.com/HongyuJiang/transportation_vis/master/data/passengeres.csv')
     }
 
 

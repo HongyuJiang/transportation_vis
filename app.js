@@ -1,8 +1,9 @@
 import React, {Component} from 'react';
 import {render} from 'react-dom';
-
+import {PhongMaterial} from '@luma.gl/core';
+import {AmbientLight, PointLight, LightingEffect} from '@deck.gl/core';
 import {StaticMap} from 'react-map-gl';
-import DeckGL, {LineLayer, TripsLayer} from 'deck.gl';
+import DeckGL, {HexagonLayer, TripsLayer} from 'deck.gl';
 import GL from '@luma.gl/constants';
 import DataProvider from './DataProvider';
 import * as dsv from 'd3-dsv';
@@ -10,8 +11,25 @@ import * as d3 from 'd3';
 
 // Set your mapbox token here
 const MAPBOX_TOKEN = 'pk.eyJ1IjoiaG9uZ3l1amlhbmciLCJhIjoiY2o1Y2VldHpuMDlyNTJxbzh5dmx2enVzNCJ9.y40wPiYB9y6qJE6H4PrzDw'; // eslint-disable-line
-const PASSENGERES_URL =
-  'https://raw.githubusercontent.com/HongyuJiang/transportation_vis/master/data/passengeres.csv'; // eslint-disable-line
+
+const ambientLight = new AmbientLight({
+  color: [255, 255, 255],
+  intensity: 1.0
+});
+
+const pointLight1 = new PointLight({
+  color: [255, 255, 255],
+  intensity: 0.8,
+  position: [-0.144528, 49.739968, 80000]
+});
+
+const pointLight2 = new PointLight({
+  color: [255, 255, 255],
+  intensity: 0.8,
+  position: [-3.807751, 54.104682, 8000]
+});
+
+const lightingEffect = new LightingEffect({ambientLight, pointLight1, pointLight2});
 
 //初始化视点
 export const INITIAL_VIEW_STATE = {
@@ -22,6 +40,23 @@ export const INITIAL_VIEW_STATE = {
   pitch: 50,
   bearing: 0
 };
+
+const material = new PhongMaterial({
+  ambient: 0.64,
+  diffuse: 0.6,
+  shininess: 32,
+  specularColor: [51, 51, 51]
+});
+
+const colorRange = [
+  [1, 152, 189],
+  [73, 227, 206],
+  [216, 254, 181],
+  [254, 237, 177],
+  [254, 173, 84],
+  [209, 55, 78]
+];
+
 
 var accent = d3.scaleOrdinal(d3.schemePaired);
 
@@ -66,7 +101,6 @@ function path_handle(data){
     trips_data.push(meta)
   }
 
-  console.log(trips_data)
 
   return trips_data
 }
@@ -79,7 +113,8 @@ export class App extends Component {
       time: 0,
       hoveredObject: null,
       linksData:{},
-      tripsData:{}
+      tripsData:{},
+      passengeres:[],
     };
     this._onHover = this._onHover.bind(this);
     this._renderTooltip = this._renderTooltip.bind(this);
@@ -98,6 +133,20 @@ export class App extends Component {
           console.log(error)
       
     }); 
+
+    DataProvider.getPassengeres().then(response => {
+      
+      let data = dsv.csvParse(response.data);
+
+      that.setState({passengeres: data})
+
+      console.log(data)
+
+      }, error => {
+
+        console.log(error)
+    
+  }); 
   }
 
   componentDidMount() {
@@ -147,18 +196,35 @@ export class App extends Component {
     );
   }
 
+  //Dipanjan (DJ) Sarkar (2019年, 五月, 10日). The Art of Effective Visualization of Multi-dimensional Data, https://towardsdatascience.com/the-art-of-effective-visualization-of-multi-dimensional-data-6c7202990c57
   
-  //绘制图层
-  _renderLayers() {
-    const {
-      getWidth = 1
-    } = this.props;
+  //Sacha D, Stoffel A, Stoffel F, et al. Knowledge generation model for visual analytics[J]. IEEE transactions on visualization and computer graphics, 2014, 20(12): 1604-1613.
 
-    const roads = this.state.linksData
+//Dipanjan (DJ) Sarkar.The Art of Effective Visualization of Multi-dimensional Data[EB/OL].https://towardsdatascience.com/the-art-of-effective-visualization-of-multi-dimensional-data-6c7202990c57,2018-1-15.
+
+
+  _renderLayers() {
+  
     const trips = this.state.tripsData
     const trailLength = 50
 
     return [
+      new HexagonLayer({
+        id: 'heatmap',
+        colorRange,
+        coverage:1,
+        data: this.state.passengeres,
+        elevationRange: [0, 3000],
+        elevationScale: 1,
+        extruded: true,
+        getPosition: d => [Number(d.lng), Number(d.lat)],
+        onHover: this._onHover,
+        opacity: 1,
+        //pickable: Boolean(this.props.onHover),
+        radius:50,
+        upperPercentile:100,
+        material
+      }),
       new TripsLayer({
         id: 'trips',
         data: trips,
@@ -192,6 +258,7 @@ export class App extends Component {
       <DeckGL
         layers={this._renderLayers()}
         initialViewState={INITIAL_VIEW_STATE}
+        effects={[lightingEffect]}
         viewState={viewState}
         controller={controller}
         pickingRadius={5}
