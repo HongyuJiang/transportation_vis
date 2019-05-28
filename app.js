@@ -8,6 +8,7 @@ import GL from '@luma.gl/constants';
 import DataProvider from './DataProvider';
 import * as dsv from 'd3-dsv';
 import * as d3 from 'd3';
+import BarChart from './components/BarChart'
 
 // Set your mapbox token here
 const MAPBOX_TOKEN = 'pk.eyJ1IjoiaG9uZ3l1amlhbmciLCJhIjoiY2o1Y2VldHpuMDlyNTJxbzh5dmx2enVzNCJ9.y40wPiYB9y6qJE6H4PrzDw'; // eslint-disable-line
@@ -17,19 +18,8 @@ const ambientLight = new AmbientLight({
   intensity: 1.0
 });
 
-const pointLight1 = new PointLight({
-  color: [255, 255, 255],
-  intensity: 0.8,
-  position: [-0.144528, 49.739968, 80000]
-});
 
-const pointLight2 = new PointLight({
-  color: [255, 255, 255],
-  intensity: 0.8,
-  position: [-3.807751, 54.104682, 8000]
-});
-
-const lightingEffect = new LightingEffect({ambientLight, pointLight1, pointLight2});
+const lightingEffect = new LightingEffect({ambientLight});
 
 //初始化视点
 export const INITIAL_VIEW_STATE = {
@@ -73,12 +63,10 @@ function path_handle(data){
 
     d.LONGITUDE = parseFloat(d.LONGITUDE)
     d.LATITUDE = parseFloat(d.LATITUDE)
-    //console.log('2018-02-26 ' + d.ACTDATETIME.split(' ')[2].replace("'",''))
+
     d.ACTDATETIME = new Date('2018-02-26 ' + d.ACTDATETIME.split(' ')[1].replace("'",''))
 
     let timestamp = (d.ACTDATETIME.getHours()) * 3600 + d.ACTDATETIME.getMinutes() * 60 + d.ACTDATETIME.getSeconds()
-
-    //console.log(timestamp)
 
     if(bus_segments_bukets[d.PRODUCTID] != undefined){
 
@@ -105,6 +93,8 @@ function path_handle(data){
   return trips_data
 }
 
+let passengeresData = []
+
 export class App extends Component {
   constructor(props) {
     super(props);
@@ -115,7 +105,8 @@ export class App extends Component {
       linksData:{},
       tripsData:{},
       passengeres:[],
-    };
+      focusExtent:[],
+    }
     this._onHover = this._onHover.bind(this);
     this._renderTooltip = this._renderTooltip.bind(this);
 
@@ -140,13 +131,53 @@ export class App extends Component {
 
       that.setState({passengeres: data})
 
-      console.log(data)
+      passengeresData = data
 
-      }, error => {
+      //that.props.passengeres = data
+
+    }, error => {
 
         console.log(error)
     
-  }); 
+    }); 
+  }
+
+  transferMsg(ext) {
+
+    this.setState({
+      focusExtent:ext 
+    });
+  }
+
+  componentWillUpdate(prevState, nextState){
+
+    if(this.state.focusExtent != nextState.focusExtent){
+
+      //console.log(nextState.focusExtent)
+
+      let startStamp = nextState.focusExtent[0].getHours() * 3600 + nextState.focusExtent[0].getMinutes() * 60 + nextState.focusExtent[0].getSeconds()
+
+      let endStamp = nextState.focusExtent[1].getHours() * 3600 + nextState.focusExtent[1].getMinutes() * 60 + nextState.focusExtent[1].getSeconds()
+
+      let stampExtent = [startStamp, endStamp]
+
+      let newData = []
+
+      passengeresData.forEach(function(d){
+
+        if(d.stamp <= stampExtent[1] && d.stamp >= stampExtent[0]){
+
+          newData.push(d)
+        }
+      })
+
+      this.setState({passengeres: newData})
+
+      //this.state.passengeres = newData
+
+      console.log(this.state.passengeres.length)
+    }
+  
   }
 
   componentDidMount() {
@@ -164,7 +195,7 @@ export class App extends Component {
     //console.log(this.state.time)
     const {
       loopLength = 3600 * 15, // unit corresponds to the timestamp in source data
-      animationSpeed = 50 // unit time per second
+      animationSpeed = 10 // unit time per second
     } = this.props;
 
     const timestamp = Date.now() / 1000;
@@ -196,32 +227,29 @@ export class App extends Component {
     );
   }
 
-  //Dipanjan (DJ) Sarkar (2019年, 五月, 10日). The Art of Effective Visualization of Multi-dimensional Data, https://towardsdatascience.com/the-art-of-effective-visualization-of-multi-dimensional-data-6c7202990c57
-  
-  //Sacha D, Stoffel A, Stoffel F, et al. Knowledge generation model for visual analytics[J]. IEEE transactions on visualization and computer graphics, 2014, 20(12): 1604-1613.
-
-//Dipanjan (DJ) Sarkar.The Art of Effective Visualization of Multi-dimensional Data[EB/OL].https://towardsdatascience.com/the-art-of-effective-visualization-of-multi-dimensional-data-6c7202990c57,2018-1-15.
-
 
   _renderLayers() {
   
     const trips = this.state.tripsData
-    const trailLength = 50
+    const passengeres = this.state.passengeres
+    const trailLength = 10
+
+    //console.log(passengeres.length, this.state.passengeres.length)
 
     return [
       new HexagonLayer({
         id: 'heatmap',
         colorRange,
-        coverage:1,
-        data: this.state.passengeres,
-        elevationRange: [0, 3000],
-        elevationScale: 1,
+        coverage: 1,
+        data: passengeres,
+        elevationRange: [0, 1000],
+        elevationScale: 3,
         extruded: true,
         getPosition: d => [Number(d.lng), Number(d.lat)],
-        onHover: this._onHover,
+        //onHover: this._onHover,
         opacity: 1,
-        //pickable: Boolean(this.props.onHover),
-        radius:50,
+        //pickable: true,
+        radius:30,
         upperPercentile:100,
         material
       }),
@@ -236,9 +264,7 @@ export class App extends Component {
           let g = color.g
           let b = color.b
 
-          console.log([r,g,b])
-
-          return [r,g,b]
+          return [200,30,30]
         },
         opacity: 1,
         widthMinPixels: 3,
@@ -253,6 +279,7 @@ export class App extends Component {
 
   render() {
     const {viewState, controller = true, baseMap = true} = this.props;
+    const passenger = this.state.passengeres;
 
     return (
       <DeckGL
@@ -278,8 +305,15 @@ export class App extends Component {
           />
         )}
 
+        <BarChart 
+          id='barChart' 
+          passenger={passenger}
+          transferMsg = {msg => this.transferMsg(msg)}
+        />
+  
         {this._renderTooltip}
       </DeckGL>
+      
     );
   }
 }
