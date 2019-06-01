@@ -115,13 +115,13 @@ export class App extends Component {
     //读取管道数据
     DataProvider.getBusPath().then(response => {
       
-        let data = path_handle(response.data)
+        ///let data = path_handle(response.data)
 
-        that.setState({tripsData: data})
+       ///that.setState({tripsData: data})
 
-        }, error => {
+        //}, error => {
 
-          console.log(error)
+        //  console.log(error)
       
     }); 
 
@@ -246,9 +246,16 @@ export class App extends Component {
         elevationScale: 3,
         extruded: true,
         getPosition: d => [Number(d.lng), Number(d.lat)],
-        //onHover: this._onHover,
+        onHover: ({object, x, y}) => {
+          //const tooltip = `${object.centroid.join(', ')}\nCount: ${object.points.length}`;
+
+          console.log(object, x, y)
+          /* Update tooltip
+             http://deck.gl/#/documentation/developer-guide/adding-interactivity?section=example-display-a-tooltip-for-hovered-object
+          */
+        },
         opacity: 1,
-        //pickable: true,
+        pickable: true,
         radius:30,
         upperPercentile:100,
         material
