@@ -1,6 +1,7 @@
 import React, {Component} from 'react';
 import * as d3 from 'd3';
 
+
 class BarChart extends Component {
 
     componentDidMount() {
@@ -63,8 +64,6 @@ class BarChart extends Component {
      // group the data for the bars
       var bins = histogram(data);
 
-      console.log(bins)
-
       // Scale the range of the data in the y domain
       y.domain([0, d3.max(bins, function(d) { return d.length; })]);
 
@@ -74,8 +73,7 @@ class BarChart extends Component {
         .enter().append("rect")
           .attr("class", "bar")
           .attr("x", 1)
-          .attr("transform", function(d) {
-          return "translate(" + x(d.x0) + "," + y(d.length) + ")"; })
+          .attr("transform", function(d) { return "translate(" + x(d.x0) + "," + y(d.length) + ")"; })
           .attr("width", function(d) { return x(d.x1) - x(d.x0) -1 ; })
           .attr("height", function(d) { return height - y(d.length); })
           .attr('fill','white')
@@ -86,8 +84,7 @@ class BarChart extends Component {
         .enter().append("rect")
           .attr("class", "bar")
           .attr("x", 1)
-          .attr("transform", function(d) {
-          return "translate(" + x(d.x0) + "," + y(d.length) + ")"; })
+          .attr("transform", function(d) { return "translate(" + x(d.x0) + "," + y(d.length) + ")"; })
           .attr("width", function(d) { return x(d.x1) - x(d.x0) -1 ; })
           .attr("height", 2)
           .attr('fill','#4799FC')

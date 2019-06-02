@@ -9,6 +9,7 @@ import DataProvider from './DataProvider';
 import * as dsv from 'd3-dsv';
 import * as d3 from 'd3';
 import BarChart from './components/BarChart'
+import LinesChart from './components/LinesChart'
 
 // Set your mapbox token here
 const MAPBOX_TOKEN = 'pk.eyJ1IjoiaG9uZ3l1amlhbmciLCJhIjoiY2o1Y2VldHpuMDlyNTJxbzh5dmx2enVzNCJ9.y40wPiYB9y6qJE6H4PrzDw'; // eslint-disable-line
@@ -46,6 +47,8 @@ const colorRange = [
   [254, 173, 84],
   [209, 55, 78]
 ];
+
+let stationDict = {}
 
 
 var accent = d3.scaleOrdinal(d3.schemePaired);
@@ -106,14 +109,17 @@ export class App extends Component {
       tripsData:{},
       passengeres:[],
       focusExtent:[],
+      passengersInClickStation:[],
+
     }
     this._onHover = this._onHover.bind(this);
+    this._onClick = this._onClick.bind(this);
     this._renderTooltip = this._renderTooltip.bind(this);
 
     let that = this
 
     //读取管道数据
-    DataProvider.getBusPath().then(response => {
+    //DataProvider.getBusPath().then(response => {
       
         ///let data = path_handle(response.data)
 
@@ -123,7 +129,7 @@ export class App extends Component {
 
         //  console.log(error)
       
-    }); 
+    //}); 
 
     DataProvider.getPassengeres().then(response => {
       
@@ -140,6 +146,33 @@ export class App extends Component {
         console.log(error)
     
     }); 
+
+    DataProvider.getStationDetail().then(response => {
+
+
+      let stations = dsv.csvParse(response.data);
+
+      stations.forEach(function(d){
+
+        let meta = {'name':d.name,'lat':d.lat,'lng':d.lng}
+
+        if(stationDict[d.subline] != undefined){
+
+            stationDict[d.subline][d.seq] = meta
+        }
+        else{
+
+            stationDict[d.subline] = {}
+            stationDict[d.subline][d.seq] = meta
+        }
+      })
+
+      //console.log(stationDict)
+
+    }, error => {
+
+      console.log(error)
+    })
   }
 
   transferMsg(ext) {
@@ -175,7 +208,7 @@ export class App extends Component {
 
       //this.state.passengeres = newData
 
-      console.log(this.state.passengeres.length)
+      //console.log(this.state.passengeres.length)
     }
   
   }
@@ -210,18 +243,74 @@ export class App extends Component {
   }
 
   //鼠标悬停
-  _onHover({x, y, object}) {
-    this.setState({x, y, hoveredObject: object});
+  _onHover({object, x, y}) {
+
+    let lineCounter = {}
+
+    let stationName = ''
+
+    if (object){
+
+      object.points.forEach(function(d){
+        
+        if(stationDict[d.line]){
+
+          //console.log(d)
+
+          if(stationDict[d.line][d.seq])
+            stationName = stationDict[d.line][d.seq].name
+
+          if(lineCounter[d.line] == undefined)
+            lineCounter[d.line] = 1
+
+          lineCounter[d.line] ++
+        }
+      })
+
+    }
+
+    //console.log(stationName)
+    
+   
+    this.setState({x, y, hoveredObject: {'name':stationName, 'degree': d3.keys(lineCounter).length}});
+
+  }
+
+  _onClick({object, x, y}){
+
+    let lineCounter = {}
+
+    if (object){
+
+      object.points.forEach(function(d){
+        
+        if(stationDict[d.line]){
+
+          if(lineCounter[d.line] == undefined)
+            lineCounter[d.line] = 1
+
+          lineCounter[d.line] ++
+        }
+      })
+
+    }
+
+    console.log(lineCounter)
+
+    this.setState({passengersInClickStation: object.points})
+
   }
 
   //绘制提示框
   _renderTooltip() {
+
     const {x, y, hoveredObject} = this.state;
+
     return (
       hoveredObject && (
         <div className="tooltip" style={{left: x, top: y}}>
-          <div>{hoveredObject.country || hoveredObject.abbrev}</div>
-          <div>{hoveredObject.name.indexOf('0x') >= 0 ? '' : hoveredObject.name}</div>
+          <div>{hoveredObject.name}</div>
+          <div>{hoveredObject.degree}</div>
         </div>
       )
     );
@@ -246,14 +335,8 @@ export class App extends Component {
         elevationScale: 3,
         extruded: true,
         getPosition: d => [Number(d.lng), Number(d.lat)],
-        onHover: ({object, x, y}) => {
-          //const tooltip = `${object.centroid.join(', ')}\nCount: ${object.points.length}`;
-
-          console.log(object, x, y)
-          /* Update tooltip
-             http://deck.gl/#/documentation/developer-guide/adding-interactivity?section=example-display-a-tooltip-for-hovered-object
-          */
-        },
+        onHover: this._onHover,
+        onClick: this._onClick,
         opacity: 1,
         pickable: true,
         radius:30,
@@ -287,6 +370,7 @@ export class App extends Component {
   render() {
     const {viewState, controller = true, baseMap = true} = this.props;
     const passenger = this.state.passengeres;
+    const passengersInClickStation = this.state.passengersInClickStation;
 
     return (
       <DeckGL
@@ -316,6 +400,11 @@ export class App extends Component {
           id='barChart' 
           passenger={passenger}
           transferMsg = {msg => this.transferMsg(msg)}
+        />
+
+        <LinesChart 
+          id='lineChart' 
+          station={passengersInClickStation}
         />
   
         {this._renderTooltip}
