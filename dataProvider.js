@@ -21,6 +21,9 @@ export default class DataProvider {
         return axios.get('https://raw.githubusercontent.com/HongyuJiang/transportation_vis/master/data/passengeres.csv')
     }
 
-
+    static getStationDetail(){
+        
+        return axios.get('https://raw.githubusercontent.com/HongyuJiang/transportation_vis/master/data/stations.csv')
+    }
 
 }
