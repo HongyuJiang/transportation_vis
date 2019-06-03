@@ -94,8 +94,13 @@ class LinesChart extends Component {
             let array = []
             for(let line in data){
 
-                array.push({'line':line, 'hours':data[line]})
+                array.push({'line':line, 'hours':data[line], 'total':data[line]['total']})
             }
+
+            array = array.sort(function(a,b){
+
+                return b.total - a.total
+            })
 
             return array
         })

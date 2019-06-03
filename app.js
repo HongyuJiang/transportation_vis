@@ -10,6 +10,7 @@ import * as dsv from 'd3-dsv';
 import * as d3 from 'd3';
 import BarChart from './components/BarChart'
 import LinesChart from './components/LinesChart'
+import IconClusterLayer from './components/icon-cluster-layer';
 
 // Set your mapbox token here
 const MAPBOX_TOKEN = 'pk.eyJ1IjoiaG9uZ3l1amlhbmciLCJhIjoiY2o1Y2VldHpuMDlyNTJxbzh5dmx2enVzNCJ9.y40wPiYB9y6qJE6H4PrzDw'; // eslint-disable-line
@@ -323,7 +324,15 @@ export class App extends Component {
     const passengeres = this.state.passengeres
     const trailLength = 10
 
-    //console.log(passengeres.length, this.state.passengeres.length)
+    const layerProps = {
+      data: passengeres,
+      pickable: true,
+      wrapLongitude: true,
+      getPosition: d => [Number(d.lng), Number(d.lat)],
+      iconMapping: 'data/location-icon-mapping.json',
+      iconAtlas: 'data/location-icon-atlas.png',
+      sizeScale: 60
+    };
 
     return [
       new HexagonLayer({
@@ -331,7 +340,7 @@ export class App extends Component {
         colorRange,
         coverage: 1,
         data: passengeres,
-        elevationRange: [0, 1000],
+        elevationRange: [0, 1],
         elevationScale: 3,
         extruded: true,
         getPosition: d => [Number(d.lng), Number(d.lat)],
@@ -343,7 +352,12 @@ export class App extends Component {
         upperPercentile:100,
         material
       }),
-      new TripsLayer({
+      new IconClusterLayer({
+        ...layerProps, 
+        id: 'icon-cluster'
+      })
+
+      /*new TripsLayer({
         id: 'trips',
         data: trips,
         getPath: d => d.segments,
@@ -363,7 +377,7 @@ export class App extends Component {
         currentTime: this.state.time,
         //pickable: true,
        // onHover: this._onHover
-      }),
+      }),*/
     ];
   }
 
