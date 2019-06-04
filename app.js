@@ -3,7 +3,7 @@ import {render} from 'react-dom';
 import {PhongMaterial} from '@luma.gl/core';
 import {AmbientLight, PointLight, LightingEffect} from '@deck.gl/core';
 import {StaticMap} from 'react-map-gl';
-import DeckGL, {HexagonLayer, LineLayer, TextLayer} from 'deck.gl';
+import DeckGL, {HexagonLayer, IconLayer, LineLayer, TextLayer} from 'deck.gl';
 import GL from '@luma.gl/constants';
 import DataProvider from './DataProvider';
 import * as dsv from 'd3-dsv';
@@ -389,10 +389,10 @@ export class App extends Component {
     //console.log(relatedBusLines)
 
     const layerProps = {
-      data: passengeres,
+      data: stationsInfo,
       pickable: true,
       wrapLongitude: true,
-      getPosition: d => [Number(d.lng), Number(d.lat)],
+      getPosition: d => [Number(d.lat), Number(d.lng)],
       iconMapping: 'data/location-icon-mapping.json',
       iconAtlas: 'data/location-icon-atlas.png',
       sizeScale: 60
@@ -432,9 +432,16 @@ export class App extends Component {
         data: stationsInfo ,
         getText: d => d.name,
         getPosition: d => [Number(d.lat), Number(d.lng)],
-        getColor: d => [255,255,255],
-        getSize: d => 50,
+        getColor: d => [255,0,0],
+        getSize: d => 30,
         sizeScale: 1
+      }),
+      new IconLayer({
+        ...layerProps,
+        id: 'icon',
+        getIcon: d => 'marker',
+        getSize: 1,
+        opacity: 0.5,
       })
     ];
   }
@@ -484,6 +491,7 @@ export class App extends Component {
           path={busPaths}
           station={passengersInClickStation}
         />
+
   
         {this._renderTooltip}
       </DeckGL>

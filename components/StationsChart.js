@@ -116,7 +116,7 @@ class StationsChart extends Component {
         //console.log(dayTime, startTime, endTime)
 
         let width = 800
-        let height = data.length * 85
+        let height = data.length * 100
 
         let xScale = d3.scaleTime().domain([startTime, endTime]).range([0, width])
 
@@ -225,8 +225,8 @@ class StationsChart extends Component {
             return xScale(new Date(t_date))
         })
         .attr('cy', d => productCount[d.ROUTEID][d.PRODUCTID] * 2)
-        .attr('stroke', d => accent(d.PRODUCTID))
-        .attr('fill', 'none')
+        .attr('fill', d => accent(d.PRODUCTID))
+        .attr('stroke', 'none')
         .attr('stroke-width', 2)
         .attr('r', 3)
         //.attr('height', 3)
@@ -235,7 +235,7 @@ class StationsChart extends Component {
           
     render(){
 
-        return <div style={{width: '850px', height: '350px'}}>
+        return <div style={{width: '800px', height: '360px'}}>
         <FreeScrollBar>
             <div id={this.props.id}></div>
         </FreeScrollBar>

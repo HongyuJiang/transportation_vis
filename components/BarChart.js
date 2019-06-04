@@ -27,9 +27,9 @@ class BarChart extends Component {
       d3.select('#' + this.props.id)
       .style('z-index', '999')
       .style('position', 'absolute')
-      .style('bottom','0px')
+      .style('bottom','-30px')
 
-      let width = 1800
+      let width = 800
       let height = 150
 
       // set the ranges
