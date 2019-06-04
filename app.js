@@ -3,14 +3,15 @@ import {render} from 'react-dom';
 import {PhongMaterial} from '@luma.gl/core';
 import {AmbientLight, PointLight, LightingEffect} from '@deck.gl/core';
 import {StaticMap} from 'react-map-gl';
-import DeckGL, {HexagonLayer, TripsLayer} from 'deck.gl';
+import DeckGL, {HexagonLayer, LineLayer, TextLayer} from 'deck.gl';
 import GL from '@luma.gl/constants';
 import DataProvider from './DataProvider';
 import * as dsv from 'd3-dsv';
 import * as d3 from 'd3';
 import BarChart from './components/BarChart'
 import LinesChart from './components/LinesChart'
-import IconClusterLayer from './components/icon-cluster-layer';
+import StationsChart from './components/StationsChart'
+const pinyin = require("pinyin");
 
 // Set your mapbox token here
 const MAPBOX_TOKEN = 'pk.eyJ1IjoiaG9uZ3l1amlhbmciLCJhIjoiY2o1Y2VldHpuMDlyNTJxbzh5dmx2enVzNCJ9.y40wPiYB9y6qJE6H4PrzDw'; // eslint-disable-line
@@ -40,19 +41,23 @@ const material = new PhongMaterial({
   specularColor: [51, 51, 51]
 });
 
-const colorRange = [
+/*const colorRange = [
   [1, 152, 189],
   [73, 227, 206],
   [216, 254, 181],
   [254, 237, 177],
   [254, 173, 84],
   [209, 55, 78]
+];*/
+
+const colorRange = [
+  [255,255,255]
 ];
 
 let stationDict = {}
 
+const accent = d3.scaleOrdinal(d3.schemeSet3);
 
-var accent = d3.scaleOrdinal(d3.schemePaired);
 
 // 解析数据
 function path_handle(data){
@@ -111,6 +116,8 @@ export class App extends Component {
       passengeres:[],
       focusExtent:[],
       passengersInClickStation:[],
+      relatedBusLines:[],
+      stationsInfo:{}
 
     }
     this._onHover = this._onHover.bind(this);
@@ -140,8 +147,6 @@ export class App extends Component {
 
       passengeresData = data
 
-      //that.props.passengeres = data
-
     }, error => {
 
         console.log(error)
@@ -150,12 +155,22 @@ export class App extends Component {
 
     DataProvider.getStationDetail().then(response => {
 
+      //let stationsInfo =[]
 
       let stations = dsv.csvParse(response.data);
 
       stations.forEach(function(d){
 
-        let meta = {'name':d.name,'lat':d.lat,'lng':d.lng}
+        let pinyinName = pinyin(d.name, {
+          style: pinyin.STYLE_NORMAL, // 设置拼音风格
+         // heteronym: true
+        })
+
+        let meta = {'name':pinyinName.join(' '), 'lat':d.lat,'lng':d.lng}
+
+        //console.log(meta)
+
+        //stationsInfo.push(meta)
 
         if(stationDict[d.subline] != undefined){
 
@@ -168,12 +183,21 @@ export class App extends Component {
         }
       })
 
-      //console.log(stationDict)
-
+      
     }, error => {
 
       console.log(error)
     })
+
+    DataProvider.getBusPath().then(response => {
+
+      let busPaths = dsv.csvParse(response.data);
+
+      that.setState({'busPaths': busPaths})
+
+      //console.log(busPaths)
+    })
+
   }
 
   transferMsg(ext) {
@@ -207,9 +231,6 @@ export class App extends Component {
 
       this.setState({passengeres: newData})
 
-      //this.state.passengeres = newData
-
-      //console.log(this.state.passengeres.length)
     }
   
   }
@@ -270,9 +291,6 @@ export class App extends Component {
 
     }
 
-    //console.log(stationName)
-    
-   
     this.setState({x, y, hoveredObject: {'name':stationName, 'degree': d3.keys(lineCounter).length}});
 
   }
@@ -281,22 +299,68 @@ export class App extends Component {
 
     let lineCounter = {}
 
+    let stationsInfo = []
+
+    let stationName = ''
+
+    console.log(object)
+
     if (object){
 
       object.points.forEach(function(d){
+
+        let line = parseInt(d.line/1000)
         
         if(stationDict[d.line]){
 
-          if(lineCounter[d.line] == undefined)
-            lineCounter[d.line] = 1
+          if(stationDict[d.line][d.seq])
+            stationName = stationDict[d.line][d.seq].name
 
-          lineCounter[d.line] ++
+          if(lineCounter[line] == undefined)
+            lineCounter[line] = 1
+
+          lineCounter[line] ++
         }
       })
 
     }
 
-    console.log(lineCounter)
+    stationsInfo.push({'name': stationName, 
+    'lat': object.position[0], 
+    'lng': object.position[1]})
+
+    this.setState({stationsInfo})
+
+    let busPathLines = []
+
+    DataProvider.getLinesPathLocations(d3.keys(lineCounter)).then(responses => {
+
+      responses.forEach(function(response){
+
+        let stationArray = dsv.csvParse(response.data)
+
+        for(let i=0;i<stationArray.length - 1;i++){
+  
+          let source = stationArray[i]
+  
+          let target = stationArray[i + 1]
+  
+          let sourceLocation =  [parseFloat(source.STATIONLONGITUDE), 
+            parseFloat(source.STATIONLATITUDE), 0]
+  
+          let targetLocation =  [parseFloat(target.STATIONLONGITUDE), 
+            parseFloat(target.STATIONLATITUDE), 0]
+  
+          let color = d3.color(accent(source.ROUTEID)).rgb()
+  
+          busPathLines.push({'start':sourceLocation,'end':targetLocation, 'color': [color.r, color.g, color.b]})
+  
+        }
+  
+      })
+
+      this.setState({relatedBusLines: busPathLines})
+    })
 
     this.setState({passengersInClickStation: object.points})
 
@@ -308,7 +372,7 @@ export class App extends Component {
     const {x, y, hoveredObject} = this.state;
 
     return (
-      hoveredObject && (
+      hoveredObject && hoveredObject.name && (
         <div className="tooltip" style={{left: x, top: y}}>
           <div>{hoveredObject.name}</div>
           <div>{hoveredObject.degree}</div>
@@ -320,9 +384,9 @@ export class App extends Component {
 
   _renderLayers() {
   
-    const trips = this.state.tripsData
-    const passengeres = this.state.passengeres
-    const trailLength = 10
+    const {passengeres, relatedBusLines, stationsInfo} = this.state
+
+    //console.log(relatedBusLines)
 
     const layerProps = {
       data: passengeres,
@@ -340,57 +404,51 @@ export class App extends Component {
         colorRange,
         coverage: 1,
         data: passengeres,
-        elevationRange: [0, 1],
+        elevationRange: [0, 10],
         elevationScale: 3,
-        extruded: true,
+       // extruded: true,
         getPosition: d => [Number(d.lng), Number(d.lat)],
         onHover: this._onHover,
         onClick: this._onClick,
         opacity: 1,
         pickable: true,
-        radius:30,
+        radius:20,
         upperPercentile:100,
         material
       }),
-      new IconClusterLayer({
-        ...layerProps, 
-        id: 'icon-cluster'
+      new LineLayer({
+        id: 'line-paths',
+        data: relatedBusLines,
+        fp64: false,
+        getSourcePosition: d => d.start,
+        getTargetPosition: d => d.end,
+        getColor: d => d.color,
+        getWidth: 2,
+       // pickable: true,
+        //onHover: this._onHover
+      }),
+      new TextLayer({
+        id: 'station-name',
+        data: stationsInfo ,
+        getText: d => d.name,
+        getPosition: d => [Number(d.lat), Number(d.lng)],
+        getColor: d => [255,255,255],
+        getSize: d => 50,
+        sizeScale: 1
       })
-
-      /*new TripsLayer({
-        id: 'trips',
-        data: trips,
-        getPath: d => d.segments,
-        getColor: d => {
-
-          let color = d3.rgb(accent(d.line))
-          let r = color.r
-          let g = color.g
-          let b = color.b
-
-          return [200,30,30]
-        },
-        opacity: 1,
-        widthMinPixels: 3,
-        rounded: true,
-        trailLength,
-        currentTime: this.state.time,
-        //pickable: true,
-       // onHover: this._onHover
-      }),*/
     ];
   }
 
   render() {
     const {viewState, controller = true, baseMap = true} = this.props;
     const passenger = this.state.passengeres;
-    const passengersInClickStation = this.state.passengersInClickStation;
+    const {passengersInClickStation,busPaths} = this.state;
 
     return (
       <DeckGL
         layers={this._renderLayers()}
         initialViewState={INITIAL_VIEW_STATE}
-        effects={[lightingEffect]}
+       // effects={[lightingEffect]}
         viewState={viewState}
         controller={controller}
         pickingRadius={5}
@@ -418,6 +476,12 @@ export class App extends Component {
 
         <LinesChart 
           id='lineChart' 
+          station={passengersInClickStation}
+        />
+
+        <StationsChart 
+          id='stationChart' 
+          path={busPaths}
           station={passengersInClickStation}
         />
   

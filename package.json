@@ -7,15 +7,18 @@
     "start": "webpack-dev-server --progress --hot --open"
   },
   "dependencies": {
-    "axios": "^0.18.0",
+    "axios": "^0.18.1",
     "d3": "^5.9.2",
     "d3-dsv": "^1.1.1",
-    "deck.gl": "^7.0.0-beta",
+    "deck.gl": "^7.0.11",
+    "pinyin": "^2.9.0",
     "rbush": "^2.0.1",
     "react": "^16.8.6",
     "react-dom": "^16.8.6",
     "react-faux-dom": "^4.5.0",
-    "react-map-gl": "^4.1.2"
+    "react-free-scrollbar": "^0.3.4",
+    "react-map-gl": "^4.1.2",
+    "translate": "^1.1.0"
   },
   "devDependencies": {
     "@babel/core": "^7.4.0",

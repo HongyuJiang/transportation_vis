@@ -58,7 +58,9 @@ class LinesChart extends Component {
         .style('z-index', '999')
         .style('position', 'absolute')
         .style('top','0px')
-        .style('right','50px')
+        .style('right','-20px')
+        .style('height','700px')
+        .style('overflow-y','auto')
 
         let newData = []
 
@@ -128,12 +130,12 @@ class LinesChart extends Component {
         })
         .enter()
         .append('rect')
-        .attr('width', 5)
+        .attr('width', 8)
         .attr('height', d => d.heat/3)
-        .attr('fill','yellow')
+        .attr('fill','#70FFA2')
         .attr('opacity',0.5)
         .attr('y', d => 80 - d.heat/3)
-        .attr('x', d => 200 + parseInt(d.hour) * 6)
+        .attr('x', d => 60 + parseInt(d.hour) * 10)
 
         svg.selectAll('lineBlocks')
         .data(newData)
@@ -142,7 +144,7 @@ class LinesChart extends Component {
         .attr('width', d => xScale(d.count))
         .attr('height',10)
         .attr('fill','white')
-        .attr('opacity',0.5)
+        .attr('opacity',0.3)
         .attr('y', function(d,i){
 
             return i * 50 + 50
@@ -155,7 +157,7 @@ class LinesChart extends Component {
         .append('rect')
         .attr('width', 3)
         .attr('height',10)
-        .attr('fill','red')
+        .attr('fill','#FF7061')
         .attr('opacity', 1)
         .attr('y', function(d,i){
 
