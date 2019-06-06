@@ -2,30 +2,25 @@ import React, {Component} from 'react';
 import * as d3 from 'd3';
 import FreeScrollBar from 'react-free-scrollbar';
 
+const accent = d3.scaleOrdinal(d3.schemeDark2);
+
 class StationsChart extends Component {
 
     componentDidMount() {
       
-      //this.isLoaded = false
     }
 
     componentWillUpdate(nextProps){
 
-       // console.log(nextProps.path)
 
       if(nextProps.path != undefined && nextProps.path.length > 0){
 
         if(nextProps.station != undefined && nextProps.station.length > 0 && nextProps.station != this.props.station){
 
-            //this.isLoaded = true
-
-            //console.log(nextProps.station)
-
             let data = this.dataHandle(nextProps.path,nextProps.station);
 
             this.drawChart(data)
         }
-
 
       }
    
@@ -84,16 +79,12 @@ class StationsChart extends Component {
             }
         }
 
-       // console.log(routeStationDict, originStation)
-
         return focusedStationRecords
     }
       
     drawChart(data) {
 
-        //console.log(data)
-
-        let accent = d3.scaleOrdinal(d3.schemeSet3);
+        let busColors = d3.scaleOrdinal(d3.schemeSet3);
 
         d3.select('#' + this.props.id)
         .style('z-index', '999')
@@ -101,7 +92,6 @@ class StationsChart extends Component {
         .style('top','30px')
         .style('left','10px')
         .style('height','300px')
-        //.style('overflow-y','auto')
 
         let dayTime = data[0][0].ACTDATETIME.split(' ')[0].replace("'",'')
 
@@ -109,14 +99,13 @@ class StationsChart extends Component {
 
         let t_date = dataGroup[1] + '-' +  dataGroup[0] + '-' + dataGroup[2]
 
-        let startTime = new Date(t_date + ' 05:00:00')
+        let startTime = new Date(t_date + ' 06:00:00')
 
-        let endTime = new Date(t_date + ' 22:59:59')
+        let endTime = new Date(t_date + ' 12:59:59')
 
-        //console.log(dayTime, startTime, endTime)
 
-        let width = 800
-        let height = data.length * 100
+        let width = 750
+        let height = data.length * 105
 
         let xScale = d3.scaleTime().domain([startTime, endTime]).range([0, width])
 
@@ -126,6 +115,8 @@ class StationsChart extends Component {
         .append("svg")
         .attr("width", width)
         .attr("height", height)
+        .append('g')
+        .attr('transform','translate(0, 10)')
 
         let productCount = {}
         
@@ -146,7 +137,9 @@ class StationsChart extends Component {
             })
         })
 
-        //console.log(productCount)
+        let incremental = 0
+
+        let gap = 30
 
         let stopTimeContainer = svg.selectAll('stopTime')
         .data(data)
@@ -154,41 +147,67 @@ class StationsChart extends Component {
         .append('g')
         .attr('transform', function(d,i){
 
-            return 'translate(' + 0 + ',' + (i * 100 + 20) + ')'
+            let line = d[0].ROUTEID
+
+            let height = d3.keys(productCount[line]).length * 4 + 10
+
+            let ret = 'translate(' + 0 + ',' + (incremental) + ')'
+
+            incremental += height
+
+            incremental += gap
+
+            return ret
         })
+
+        svg.attr("height", incremental + 10)
 
         stopTimeContainer
         .append('rect')
+        .datum(function(d){
+
+            if(d[0] == undefined) return 'motherfucker'
+
+            return d[0].ROUTEID
+        })
         .attr('x', 0)
         .attr('y', -10)
         .attr('width', width)
-        .attr('height', 75)
-        .attr('opacity', 0.2)
-        .attr('fill','white')
-        .text(d => d)
-
+        .attr('height', d => d3.keys(productCount[d]).length * 4 + 10)
+        .attr('opacity', 1)
+        .attr('fill','#464646')
+    
         stopTimeContainer
         .append('rect')
+        .datum(function(d){
+
+            if(d[0] == undefined) return 'motherfucker'
+
+            return d[0].ROUTEID
+        })
         .attr('x', 0)
         .attr('y', -10)
-        .attr('width', 3)
-        .attr('height', 75)
-        .attr('opacity', 0.7)
-        .attr('fill','steelblue')
+        .attr('width', 5)
+        .attr('height', d => d3.keys(productCount[d]).length * 4 + 10)
+        .attr('opacity', 1)
+        .attr('fill', d => accent(d))
         .text(d => d)
 
-        stopTimeContainer
-        .append('rect')
-        .attr('x', 3)
-        .attr('y', -10)
-        .attr('width', 20)
-        .attr('height', 20)
-        .attr('opacity', 1)
-        .attr('fill','black')
 
         let axis = stopTimeContainer.append("g")
-          .attr("transform", "translate(0," + 65 + ")")
-          .call(d3.axisBottom(xScale));
+            .datum(function(d){
+
+                if(d[0] == undefined) return 'motherfucker'
+
+                return d[0].ROUTEID
+            })
+            .attr("transform", function(d){
+
+                let height = d3.keys(productCount[d]).length * 4
+
+                return "translate(0," + height + ")"
+            })
+            .call(d3.axisBottom(xScale));
 
         axis.selectAll('path').attr('stroke','white')
 
@@ -204,17 +223,29 @@ class StationsChart extends Component {
 
             return d[0].ROUTEID
         })
-        .attr('x', 5)
-        .attr('y', 5)
-        .attr('font-size', 10)
+        .attr('x', 10)
+        .attr('y', d => d3.keys(productCount[d]).length * 2)
+        .attr('font-size', 18)
+        .attr('font-weight', 100)
+        .attr('font-family', 'Bahnschrift')
         .attr('fill','white')
         .text(d => d)
 
-        stopTimeContainer.selectAll('timeTick')
-        .data(d => d)
+        let metaEle = stopTimeContainer.selectAll('timeTick')
+        .data(data => data.filter(d =>{
+
+            let date = d.ACTDATETIME.slice(1, d.ACTDATETIME.length - 1)
+
+            let dataGroup = date.split('-')
+
+            let t_date = new Date (dataGroup[1] + '-' +  dataGroup[0] + '-' + dataGroup[2])
+
+            if(t_date < endTime) return 1
+            else return 0
+        }))
         .enter()
-        .append('circle')
-        .attr('cx', function(d, i){
+        .append('g')
+        .attr('transform', function(d){
 
             let date = d.ACTDATETIME.slice(1, d.ACTDATETIME.length - 1)
 
@@ -222,20 +253,33 @@ class StationsChart extends Component {
 
             let t_date = dataGroup[1] + '-' +  dataGroup[0] + '-' + dataGroup[2]
 
-            return xScale(new Date(t_date))
+            let x = xScale(new Date(t_date))
+            return 'translate(' + x + ',' + '0)'
         })
-        .attr('cy', d => productCount[d.ROUTEID][d.PRODUCTID] * 2)
-        .attr('fill', d => accent(d.PRODUCTID))
+
+        metaEle.append('line')
+        .attr('x1', 0)
+        .attr('x2', 0)
+        .attr('y1', d => productCount[d.ROUTEID][d.PRODUCTID] * 4)
+        .attr('y2', d => d3.keys(productCount[d.ROUTEID]).length * 4)
+        .attr('stroke','grey')
+        .attr('opacity', 1)
+
+        metaEle.append('circle')
+        .attr('cx', 0)
+        .attr('cy', d => productCount[d.ROUTEID][d.PRODUCTID] * 4)
+        .attr('fill', d => busColors(d.PRODUCTID))
         .attr('stroke', 'none')
         .attr('stroke-width', 2)
         .attr('r', 3)
+
         //.attr('height', 3)
 
     }
           
     render(){
 
-        return <div style={{width: '800px', height: '360px'}}>
+        return <div style={{width: '800px', height: '360px', zIndex:999}}>
         <FreeScrollBar>
             <div id={this.props.id}></div>
         </FreeScrollBar>

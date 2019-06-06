@@ -11,6 +11,7 @@ import * as d3 from 'd3';
 import BarChart from './components/BarChart'
 import LinesChart from './components/LinesChart'
 import StationsChart from './components/StationsChart'
+import LinesExplorer from './components/LinesExplorer'
 const pinyin = require("pinyin");
 
 // Set your mapbox token here
@@ -26,8 +27,8 @@ const lightingEffect = new LightingEffect({ambientLight});
 
 //初始化视点
 export const INITIAL_VIEW_STATE = {
-  latitude: 31.4673768,
-  longitude: 104.5826264,
+  latitude: 31.473417,
+  longitude: 104.74650,
   zoom: 12.5,
   maxZoom: 25,
   pitch: 50,
@@ -56,7 +57,7 @@ const colorRange = [
 
 let stationDict = {}
 
-const accent = d3.scaleOrdinal(d3.schemeSet3);
+const accent = d3.scaleOrdinal(d3.schemeDark2);
 
 
 // 解析数据
@@ -117,7 +118,8 @@ export class App extends Component {
       focusExtent:[],
       passengersInClickStation:[],
       relatedBusLines:[],
-      stationsInfo:{}
+      stationsInfo:{},
+      stationDict:{}
 
     }
     this._onHover = this._onHover.bind(this);
@@ -161,12 +163,12 @@ export class App extends Component {
 
       stations.forEach(function(d){
 
-        let pinyinName = pinyin(d.name, {
+        /*let pinyinName = pinyin(d.name, {
           style: pinyin.STYLE_NORMAL, // 设置拼音风格
          // heteronym: true
-        })
+        })*/
 
-        let meta = {'name':pinyinName.join(' '), 'lat':d.lat,'lng':d.lng}
+        let meta = {'name':d.name, 'lat':d.lat,'lng':d.lng}
 
         //console.log(meta)
 
@@ -182,6 +184,8 @@ export class App extends Component {
             stationDict[d.subline][d.seq] = meta
         }
       })
+
+      this.setState({stationDict})
 
       
     }, error => {
@@ -247,7 +251,6 @@ export class App extends Component {
 
   _animate() {
 
-    //console.log(this.state.time)
     const {
       loopLength = 3600 * 15, // unit corresponds to the timestamp in source data
       animationSpeed = 10 // unit time per second
@@ -255,8 +258,6 @@ export class App extends Component {
 
     const timestamp = Date.now() / 1000;
     const loopTime = loopLength / animationSpeed;
-
-    //console.log(((timestamp % loopTime) / loopTime) * loopLength)
 
     this.setState({
       time: ((timestamp % loopTime) / loopTime) * loopLength
@@ -277,8 +278,6 @@ export class App extends Component {
         
         if(stationDict[d.line]){
 
-          //console.log(d)
-
           if(stationDict[d.line][d.seq])
             stationName = stationDict[d.line][d.seq].name
 
@@ -296,6 +295,8 @@ export class App extends Component {
   }
 
   _onClick({object, x, y}){
+
+    let altitudeAssigner = {}
 
     let lineCounter = {}
 
@@ -344,12 +345,14 @@ export class App extends Component {
           let source = stationArray[i]
   
           let target = stationArray[i + 1]
+
+          altitudeAssigner[source.ROUTEID] = d3.keys(altitudeAssigner).length + 1
   
           let sourceLocation =  [parseFloat(source.STATIONLONGITUDE), 
-            parseFloat(source.STATIONLATITUDE), 0]
+            parseFloat(source.STATIONLATITUDE), altitudeAssigner[source.ROUTEID] * 50]
   
           let targetLocation =  [parseFloat(target.STATIONLONGITUDE), 
-            parseFloat(target.STATIONLATITUDE), 0]
+            parseFloat(target.STATIONLATITUDE), altitudeAssigner[source.ROUTEID] * 50]
   
           let color = d3.color(accent(source.ROUTEID)).rgb()
   
@@ -423,11 +426,12 @@ export class App extends Component {
         getSourcePosition: d => d.start,
         getTargetPosition: d => d.end,
         getColor: d => d.color,
-        getWidth: 2,
+        opacity: 0.7,
+        getWidth: 4,
        // pickable: true,
         //onHover: this._onHover
       }),
-      new TextLayer({
+     /* new TextLayer({
         id: 'station-name',
         data: stationsInfo ,
         getText: d => d.name,
@@ -435,7 +439,7 @@ export class App extends Component {
         getColor: d => [255,0,0],
         getSize: d => 30,
         sizeScale: 1
-      }),
+      }),*/
       new IconLayer({
         ...layerProps,
         id: 'icon',
@@ -449,7 +453,7 @@ export class App extends Component {
   render() {
     const {viewState, controller = true, baseMap = true} = this.props;
     const passenger = this.state.passengeres;
-    const {passengersInClickStation,busPaths} = this.state;
+    const {passengersInClickStation,busPaths,stationDict} = this.state;
 
     return (
       <DeckGL
@@ -492,10 +496,13 @@ export class App extends Component {
           station={passengersInClickStation}
         />
 
-  
+        <LinesExplorer
+          id='linesExplorer' 
+          stations={stationDict}
+        />
+
         {this._renderTooltip}
       </DeckGL>
-      
     );
   }
 }

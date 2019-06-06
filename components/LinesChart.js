@@ -1,5 +1,9 @@
 import React, {Component} from 'react';
 import * as d3 from 'd3';
+import FreeScrollBar from 'react-free-scrollbar';
+
+
+const accent = d3.scaleOrdinal(d3.schemeDark2);
 
 class LinesChart extends Component {
 
@@ -54,15 +58,6 @@ class LinesChart extends Component {
       
     drawChart(data) {
 
-        d3.select('#' + this.props.id)
-        .style('z-index', '999')
-        .style('position', 'absolute')
-        .style('left','10px')
-        .style('height','400px')
-        .style('width','800px')
-        .style('top','400px')
-        .style('overflow-y','auto')
-
         let newData = []
 
         for(let key in data){
@@ -77,19 +72,23 @@ class LinesChart extends Component {
 
         let that = this
 
-        let width = 750
-        let height = 1000
+        let width = 600
+        let height = d3.keys(data).length * 55
 
         let xScale = d3.scaleLinear()
         .range([0, width /3])
         .domain(d3.extent(newData, d => d.count))
+
+        let hoursScale = d3.scalePoint()
+        .range([0,240])
+        .domain([0,6,12,18,24])
 
         d3.select('#' + this.props.id).selectAll('*').remove()
 
         const svg = d3.select('#' + this.props.id)
         .append("svg")
         .attr("width", width)
-        .attr("height", height)
+        .attr("height", height + 30)
 
         let hourHeatContainer = svg.selectAll('.hourHeatContainer')
         .data(function(){
@@ -111,8 +110,25 @@ class LinesChart extends Component {
         .append('g')
         .attr('transform', function(d,i){
 
-            return 'translate(' + 0 + ',' + (i * 50) + ')'
+            return 'translate(' + (width/2) + ',' + (i * 50) + ')'
         })
+
+        hourHeatContainer.append('rect')
+        .attr('x', -(width/2) + 20)
+        .attr('y', 30)
+        .attr('height', 40)
+        .attr('width', width - 50)
+        .attr('fill','#464646')
+        .attr('opacity', 1)
+
+        hourHeatContainer.append('rect')
+        .attr('x', -(width/2) + 20)
+        .attr('y', 30)
+        .attr('height', 40)
+        .attr('width', 5)
+        .attr('fill', d => accent(d.line))
+        .attr('opacity', 1)
+
 
         hourHeatContainer.selectAll('.hourHeatBars')
         .data(function(data){
@@ -120,8 +136,6 @@ class LinesChart extends Component {
             let dataArray = []
 
             for(let hour in data.hours){
-
-                //console.log(hour)
 
                 if(hour != 'total')
                     dataArray.push({'hour': hour, 'heat': data.hours[hour]})
@@ -135,8 +149,16 @@ class LinesChart extends Component {
         .attr('height', d => d.heat/3)
         .attr('fill','#70FFA2')
         .attr('opacity',0.5)
-        .attr('y', d => 80 - d.heat/3)
-        .attr('x', d => 360 + parseInt(d.hour) * 10)
+        .attr('y', d => 50 - d.heat/3)
+        .attr('x', d => parseInt(d.hour) * 10)
+
+        let axis = hourHeatContainer.append("g")
+        .attr("transform", "translate(0," + 50 + ")")
+        .call(d3.axisBottom(hoursScale));
+
+        axis.selectAll('path').attr('stroke','white')
+        axis.selectAll('line').attr('stroke','white')
+        axis.selectAll('text').attr('fill','white')
 
         svg.selectAll('lineBlocks')
         .data(newData)
@@ -196,8 +218,8 @@ class LinesChart extends Component {
     }
           
     render(){
-      const {passenger} = this.props;
-      return <div id={this.props.id}></div>
+    
+      return <div style={{width: '600px', height: '300px', top:'400px',position:'absolute', zIndex:999}}><FreeScrollBar><div id={this.props.id}></div></FreeScrollBar></div>
     }
   }
       
