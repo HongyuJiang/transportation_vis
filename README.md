@@ -1,5 +1,5 @@
-# roads_network_vis
+# Mianyang transportation visualization
 
-![preview](preview.png)
+![preview](preview.jpg)
 
 # developed via deck.gl
