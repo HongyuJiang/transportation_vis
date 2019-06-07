@@ -31,23 +31,25 @@ class LinesChart extends Component {
 
             let hour = parseInt(d.stamp / 3600)
 
-            if(dataBucket[d.line] != undefined){
+            let line = parseInt(d.line/1000)
 
-                dataBucket[d.line]['total'] += 1
+            if(dataBucket[line] != undefined){
 
-                if(dataBucket[d.line][hour] != undefined){
+                dataBucket[line]['total'] += 1
 
-                    dataBucket[d.line][hour] += 1
+                if(dataBucket[line][hour] != undefined){
+
+                    dataBucket[line][hour] += 1
                 }
                 else{
 
-                    dataBucket[d.line][hour] = 1
+                    dataBucket[line][hour] = 1
                 }
             }
             else{
 
-                dataBucket[d.line] = {'total': 1}
-                dataBucket[d.line][hour] = 1
+                dataBucket[line] = {'total': 1}
+                dataBucket[line][hour] = 1
             }
            
         })
@@ -67,7 +69,7 @@ class LinesChart extends Component {
 
         newData = newData.sort(function(a,b){
 
-            return b.count - a.count
+            return a.line - b.line
         })
 
         let that = this
@@ -99,11 +101,6 @@ class LinesChart extends Component {
                 array.push({'line':line, 'hours':data[line], 'total':data[line]['total']})
             }
 
-            array = array.sort(function(a,b){
-
-                return b.total - a.total
-            })
-
             return array
         })
         .enter()
@@ -126,7 +123,7 @@ class LinesChart extends Component {
         .attr('y', 30)
         .attr('height', 40)
         .attr('width', 5)
-        .attr('fill', d => accent(d.line))
+        .attr('fill', d => accent( parseInt(d.line)))
         .attr('opacity', 1)
 
 
@@ -192,15 +189,16 @@ class LinesChart extends Component {
         .data(newData)
         .enter()
         .append('text')
-        .attr('x', 50)
+        .attr('x', 45)
         .attr('y', function(d,i){
 
-            return i * 50 + 60
+            return i * 50 + 55
         })
         .attr('fill','white')
         .attr('text-anchor', 'end')
-        .attr('font-size', 11)
-        .text(d => parseInt(d.line / 1000))
+        .attr('font-size', 12)
+        .attr('font-family', 'Bahnschrift')
+        .text(d => parseInt(d.line))
 
         svg.selectAll('lineBlocks')
         .data(newData)

@@ -142,7 +142,10 @@ class StationsChart extends Component {
         let gap = 30
 
         let stopTimeContainer = svg.selectAll('stopTime')
-        .data(data)
+        .data(data.sort(function(a,b){
+
+            return a[0].ROUTEID - b[0].ROUTEID
+        }))
         .enter()
         .append('g')
         .attr('transform', function(d,i){
@@ -182,7 +185,7 @@ class StationsChart extends Component {
         .datum(function(d){
 
             if(d[0] == undefined) return 'motherfucker'
-
+            console.log(d[0].ROUTEID)
             return d[0].ROUTEID
         })
         .attr('x', 0)
@@ -190,7 +193,7 @@ class StationsChart extends Component {
         .attr('width', 5)
         .attr('height', d => d3.keys(productCount[d]).length * 4 + 10)
         .attr('opacity', 1)
-        .attr('fill', d => accent(d))
+        .attr('fill', d => accent(parseInt(d)))
         .text(d => d)
 
 
@@ -268,7 +271,7 @@ class StationsChart extends Component {
         metaEle.append('circle')
         .attr('cx', 0)
         .attr('cy', d => productCount[d.ROUTEID][d.PRODUCTID] * 4)
-        .attr('fill', d => busColors(d.PRODUCTID))
+        .attr('fill', d => busColors(parseInt(d.PRODUCTID)))
         .attr('stroke', 'none')
         .attr('stroke-width', 2)
         .attr('r', 3)

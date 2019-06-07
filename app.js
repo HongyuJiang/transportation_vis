@@ -31,8 +31,8 @@ export const INITIAL_VIEW_STATE = {
   longitude: 104.74650,
   zoom: 12.5,
   maxZoom: 25,
-  pitch: 50,
-  bearing: 0
+  pitch: 60,
+  bearing: 50
 };
 
 const material = new PhongMaterial({
@@ -377,8 +377,8 @@ export class App extends Component {
     return (
       hoveredObject && hoveredObject.name && (
         <div className="tooltip" style={{left: x, top: y}}>
-          <div>{hoveredObject.name}</div>
-          <div>{hoveredObject.degree}</div>
+          <div>{'站点: ' + hoveredObject.name}</div>
+          <div>{'通过线路 ' + hoveredObject.degree + '条'}</div>
         </div>
       )
     );
